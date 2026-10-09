@@ -1,0 +1,70 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nexa
+          POSTGRES_PASSWORD: nexa-ci
+          POSTGRES_DB: nexa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://nexa:nexa-ci@localhost:5432/nexa
+      JWT_SECRET: ci-secret-ci-secret-ci-secret-ci-secret
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: ci-admin-password-1
+      PORT: "8080"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Compiler le serveur
+        working-directory: server
+        run: cargo build --release
+
+      - name: Démarrer le serveur
+        working-directory: server
+        run: |
+          ./target/release/nexa-server &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/health && exit 0
+            sleep 1
+          done
+          echo "Le serveur ne répond pas" && exit 1
+
+      - name: Test de bout en bout du serveur
+        run: node scripts/smoke.mjs
+
+      - name: Installer et compiler le client
+        working-directory: client
+        run: |
+          npm ci
+          npm run build
+
+      - name: Test de synchronisation hors ligne
+        working-directory: client
+        env:
+          TEST_API_URL: http://localhost:8080
+        run: npm test

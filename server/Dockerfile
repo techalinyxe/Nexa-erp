@@ -1,0 +1,15 @@
+# Contexte de build : le dossier server/ (sur Railway : Root Directory = server)
+FROM rust:1.89-slim AS build
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+COPY migrations ./migrations
+COPY src ./src
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app/target/release/nexa-server /usr/local/bin/nexa-server
+USER nobody
+CMD ["nexa-server"]

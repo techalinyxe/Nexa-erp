@@ -1,0 +1,8 @@
+node_modules/
+dist/
+target/
+.env
+.env.*
+!.env.example
+client/src-tauri/gen/schemas/
+client/dev-dist/

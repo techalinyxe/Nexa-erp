@@ -1,0 +1,16 @@
+[package]
+name = "nexa-client"
+version = "0.1.0"
+description = "Nexa ERP"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "nexa_client_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
